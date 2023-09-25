@@ -1,5 +1,0 @@
-# github.com/dslipak/pdf v0.0.1
-## explicit
-github.com/dslipak/pdf
-# github.com/rsc/pdf v0.1.1
-## explicit

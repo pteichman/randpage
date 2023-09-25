@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -14,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dslipak/pdf"
+	"github.com/pdfcpu/pdfcpu/pkg/api"
 )
 
 // randpage scans the files and paths passed on its command line for .pdf
@@ -66,17 +65,12 @@ func main() {
 }
 
 func countPages(path string) (int, error) {
-	doc, err := pdf.Open(path)
+	doc, err := api.ReadContextFile(path)
 	if err != nil {
 		return 0, err
 	}
 
-	nPages := doc.NumPage()
-	if nPages == 0 {
-		return 0, errors.New("found zero pages")
-	}
-
-	return nPages, nil
+	return doc.XRefTable.PageCount, nil
 }
 
 // execOpen opens a pdf to the requested page. The browsers don't seem to

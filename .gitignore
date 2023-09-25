@@ -8,6 +8,8 @@
 *.so
 *.dylib
 
+randpage
+
 # Test binary, built with `go test -c`
 *.test
 
