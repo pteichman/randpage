@@ -53,7 +53,7 @@ func main() {
 			continue
 		}
 
-		if err := execOpen(path, rnd.Intn(nPages)); err != nil {
+		if err := execOpen(path, rnd.Intn(nPages)+1); err != nil {
 			continue
 		}
 
