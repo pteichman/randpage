@@ -30,7 +30,8 @@ func main() {
 				return err
 			}
 
-			if d.Type().IsRegular() && strings.HasSuffix(d.Name(), ".pdf") {
+			lowername := strings.ToLower(d.Name())
+			if d.Type().IsRegular() && strings.HasSuffix(lowername, ".pdf") {
 				pdfs = append(pdfs, path)
 			}
 
