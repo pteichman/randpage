@@ -53,7 +53,7 @@ func main() {
 			continue
 		}
 
-		if err := execOpen(path, rnd.Intn(nPages)+1); err != nil {
+		if err := open(path, rnd.Intn(nPages)+1); err != nil {
 			continue
 		}
 
@@ -74,11 +74,11 @@ func countPages(path string) (int, error) {
 	return doc.XRefTable.PageCount, nil
 }
 
-// execOpen opens a pdf to the requested page. The browsers don't seem to
+// open opens a pdf to the requested page. The browsers don't seem to
 // support the `#page=N` argument on file urls, so this spawns a temporary
 // web server to serve the pdf once. This function blocks until that
 // transfer completes.
-func execOpen(path string, page int) error {
+func open(path string, page int) error {
 	buf, err := os.ReadFile(path)
 	if err != nil {
 		return err
