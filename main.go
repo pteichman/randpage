@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"math/rand"
 	"net"
@@ -25,6 +26,17 @@ func main() {
 	var pdfs []string
 
 	for _, arg := range os.Args[1:] {
+		if arg == "-" {
+			scanner := bufio.NewScanner(os.Stdin)
+			for scanner.Scan() {
+				pdfs = append(pdfs, scanner.Text())
+			}
+			if err := scanner.Err(); err != nil {
+				fmt.Printf("Reading standard input: %s\n", err)
+			}
+			continue
+		}
+
 		filepath.WalkDir(arg, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
