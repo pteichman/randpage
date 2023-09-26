@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"log/slog"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 )
@@ -28,29 +31,14 @@ func main() {
 
 	for _, arg := range os.Args[1:] {
 		if arg == "-" {
-			scanner := bufio.NewScanner(os.Stdin)
-			for scanner.Scan() {
-				pdfs = append(pdfs, scanner.Text())
-			}
-			if err := scanner.Err(); err != nil {
-				fmt.Printf("Reading standard input: %s\n", err)
-			}
+			pdfs = append(pdfs, readLines(os.Stdin)...)
 			continue
 		}
 
-		filepath.WalkDir(arg, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			lowername := strings.ToLower(d.Name())
-			if d.Type().IsRegular() && strings.HasSuffix(lowername, ".pdf") {
-				pdfs = append(pdfs, path)
-			}
-
-			return nil
-		})
+		pdfs = append(pdfs, walkForPdfs(arg)...)
 	}
+
+	slog.Info("found candidate pdfs", "count", len(pdfs))
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	rnd.Shuffle(len(pdfs), func(i, j int) {
@@ -63,10 +51,17 @@ func main() {
 
 		nPages, err := countPages(path)
 		if err != nil {
+			slog.Info("counting pages", "path", path, "err", err)
 			continue
 		}
 
+		// nPages is 0-indexed; the browsers want 1-indexed.
+		page := rnd.Intn(nPages) + 1
+
+		slog.Info("opening pdf", "path", path, "page", page)
+
 		if err := open(path, rnd.Intn(nPages)+1); err != nil {
+			slog.Error("opening pdf", "path", path, "err", err)
 			continue
 		}
 
@@ -76,6 +71,45 @@ func main() {
 
 	fmt.Println("Could not find a usable PDF")
 	os.Exit(1)
+}
+
+func looksLikePdf(s string) bool {
+	return strings.HasSuffix(strings.ToLower(s), ".pdf")
+}
+
+func walkForPdfs(arg string) []string {
+	var ret []string
+
+	filepath.WalkDir(arg, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.Type().IsRegular() && looksLikePdf(d.Name()) {
+			ret = append(ret, path)
+		}
+
+		return nil
+	})
+
+	return ret
+}
+
+func readLines(r io.Reader) []string {
+	var ret []string
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		if looksLikePdf(scanner.Text()) {
+			ret = append(ret, scanner.Text())
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		slog.Error("reading lines", slog.Any("err", err))
+	}
+
+	return ret
 }
 
 func countPages(path string) (int, error) {
@@ -99,6 +133,7 @@ func open(path string, page int) error {
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
+		slog.Error("listening", "err", err)
 		return err
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
@@ -111,6 +146,8 @@ func open(path string, page int) error {
 
 	srv := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			slog.Info("http request", "method", r.Method, "path", r.URL.Path, "user-agent", r.Header.Get("User-Agent"))
+
 			if r.URL.Path != "/"+filename {
 				http.NotFound(w, r)
 				return
@@ -123,7 +160,7 @@ func open(path string, page int) error {
 			for len(buf) > 0 {
 				n, err := w.Write(buf)
 				if err != nil {
-					fmt.Println(err)
+					slog.Error("writing response body", "path", path, "err", err)
 					return
 				}
 				buf = buf[n:]
@@ -136,6 +173,7 @@ func open(path string, page int) error {
 
 	cmd := exec.Command("open", url)
 	if err := cmd.Run(); err != nil {
+		slog.Error("executing viewer", "url", url, "err", err)
 		return err
 	}
 
