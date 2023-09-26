@@ -106,8 +106,8 @@ func open(path string, page int) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	filename := url.PathEscape(filepath.Base(path))
-	url := fmt.Sprintf("http://127.0.0.1:%d/%s#page=%d", port, filename, page)
+	filename := filepath.Base(path)
+	url := fmt.Sprintf("http://127.0.0.1:%d/%s#page=%d", port, url.PathEscape(filename), page)
 
 	srv := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
