@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -105,12 +106,25 @@ func open(path string, page int) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
+	filename := url.PathEscape(filepath.Base(path))
+	url := fmt.Sprintf("http://127.0.0.1:%d/%s#page=%d", port, filename, page)
+
 	srv := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/"+filename {
+				http.NotFound(w, r)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/pdf")
+			w.Header().Set("Content-Length", strconv.Itoa(len(buf)))
+
+			buf := buf
 			for len(buf) > 0 {
 				n, err := w.Write(buf)
 				if err != nil {
 					fmt.Println(err)
+					return
 				}
 				buf = buf[n:]
 			}
@@ -119,12 +133,6 @@ func open(path string, page int) error {
 	}
 
 	go srv.Serve(ln)
-
-	// The actual string here doesn't matter, since the handler above
-	// doesn't check the path. But this makes things look a little nicer in
-	// the browser.
-	filename := url.PathEscape(filepath.Base(path))
-	url := fmt.Sprintf("http://127.0.0.1:%d/%s#page=%d", port, filename, page)
 
 	cmd := exec.Command("open", url)
 	if err := cmd.Run(); err != nil {
