@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net"
 	"net/http"
@@ -15,8 +16,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"log/slog"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 )
@@ -146,7 +145,7 @@ func open(path string, page int) error {
 
 	srv := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			slog.Info("http request", "method", r.Method, "path", r.URL.Path, "user-agent", r.Header.Get("User-Agent"))
+			slog.Info("http request", "method", r.Method, "path")
 
 			if r.URL.Path != "/"+filename {
 				http.NotFound(w, r)
